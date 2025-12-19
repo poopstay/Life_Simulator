@@ -1,0 +1,56 @@
+############################
+# Unity generated folders
+############################
+[Ll]ibrary/
+[Tt]emp/
+[Ll]ogs/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+UserSettings/
+
+############################
+# Unity cache / meta
+############################
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+############################
+# Rider / Visual Studio
+############################
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.unityproj
+*.pidb.meta
+
+############################
+# OS generated
+############################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+############################
+# Crash reports
+############################
+sysinfo.txt
+
+############################
+# Addressables (optional)
+############################
+# Assets/AddressableAssetsData/*/*.bin*
+# Assets/AddressableAssetsData/*/*.hash*
