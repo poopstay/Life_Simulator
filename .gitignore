@@ -54,3 +54,4 @@ sysinfo.txt
 ############################
 # Assets/AddressableAssetsData/*/*.bin*
 # Assets/AddressableAssetsData/*/*.hash*
+*.blend1
