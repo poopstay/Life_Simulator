@@ -513,8 +513,9 @@ MonoBehaviour:
   animator: {fileID: 691912496}
   rb: {fileID: 739053821}
   walkThreshold: 0.1
-  runSpeedThreshold: 3
-  forwardRunMin: 0.15
+  runKey: 304
+  inputDeadzone: 0.1
+  forbidBackwardRun: 0
 --- !u!114 &739053829
 MonoBehaviour:
   m_ObjectHideFlags: 0
