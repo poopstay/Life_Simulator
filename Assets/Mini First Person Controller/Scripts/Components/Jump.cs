@@ -2,33 +2,56 @@
 
 public class Jump : MonoBehaviour
 {
-    Rigidbody rigidbody;
-    public float jumpStrength = 2;
+    private Rigidbody rb;
+
+    [Header("Jump")]
+    public float jumpStrength = 2f;
     public event System.Action Jumped;
 
     [SerializeField, Tooltip("Prevents jumping when the transform is in mid-air.")]
-    GroundCheck groundCheck;
+    private GroundCheck groundCheck;
 
+    [Header("Animation")]
+    [SerializeField] private PlayerAnimStateDriver animDriver;
 
     void Reset()
     {
-        // Try to get groundCheck.
+        // Auto find GroundCheck
         groundCheck = GetComponentInChildren<GroundCheck>();
+        animDriver = GetComponent<PlayerAnimStateDriver>();
     }
 
     void Awake()
     {
-        // Get rigidbody.
-        rigidbody = GetComponent<Rigidbody>();
+        rb = GetComponent<Rigidbody>();
+
+        if (!groundCheck)
+            groundCheck = GetComponentInChildren<GroundCheck>();
+
+        if (!animDriver)
+            animDriver = GetComponent<PlayerAnimStateDriver>();
     }
 
-    void LateUpdate()
+    void Update()
     {
-        // Jump when the Jump button is pressed and we are on the ground.
+        // Jump when Jump button is pressed and grounded
         if (Input.GetButtonDown("Jump") && (!groundCheck || groundCheck.isGrounded))
         {
-            rigidbody.AddForce(Vector3.up * 100 * jumpStrength);
-            Jumped?.Invoke();
+            DoJump();
         }
     }
+
+	private void DoJump()
+	{
+		// reset vận tốc Y để không cộng dồn
+		Vector3 v = rb.linearVelocity;
+		v.y = 0f;
+		rb.linearVelocity = v;
+
+		// nhảy vừa phải (tune jumpStrength khoảng 4–7)
+		rb.AddForce(Vector3.up * jumpStrength, ForceMode.Impulse);
+
+		animDriver?.PlayJump();
+		Jumped?.Invoke();
+	}
 }
