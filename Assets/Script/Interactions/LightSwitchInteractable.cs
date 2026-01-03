@@ -2,48 +2,47 @@ using UnityEngine;
 
 public class LightSwitchInteractable : MonoBehaviour, IInteractable
 {
-    [Header("Light to toggle")]
-    public Light targetLight;
+    public Light[] lights;
 
-    [Header("Highlight")]
-    public Renderer rend;
-    public float emissionIntensity = 2.0f;
+    [Header("Start State")]
+    public bool startOn = false;
+    private bool isOn;
 
-    MaterialPropertyBlock mpb;
-    bool focused;
+    private OutlineHighlighter outline;
 
-    void Awake()
+    private void Awake()
     {
-        if (!rend) rend = GetComponentInChildren<Renderer>();
-        mpb = new MaterialPropertyBlock();
+        outline = GetComponentInChildren<OutlineHighlighter>(true);
+        if (!outline) outline = GetComponentInParent<OutlineHighlighter>(true);
+
+        isOn = startOn;
+        ApplyLights();
+    }
+
+    void ApplyLights()
+    {
+        foreach (var l in lights)
+            if (l) l.enabled = isOn;
     }
 
     public void OnFocus()
     {
-        focused = true;
-        SetEmission(true);
+        if (outline) outline.SetHighlighted(true);
     }
 
     public void OnUnfocus()
     {
-        focused = false;
-        SetEmission(false);
+        if (outline) outline.SetHighlighted(false);
     }
 
     public void Interact(Interactor interactor)
     {
-        if (targetLight) targetLight.enabled = !targetLight.enabled;
+        isOn = !isOn;
+        ApplyLights();
     }
 
-    void SetEmission(bool on)
+    public string GetHintText()
     {
-        if (!rend) return;
-
-        rend.GetPropertyBlock(mpb);
-        // URP Lit dùng _EmissionColor
-        mpb.SetColor("_EmissionColor", on ? Color.white * emissionIntensity : Color.black);
-        rend.SetPropertyBlock(mpb);
-
-        // Lưu ý: material phải bật Emission trong shader (URP/Lit) thì mới thấy rõ.
+        return isOn ? "Ấn [E] để tắt đèn" : "Ấn [E] để bật đèn";
     }
 }

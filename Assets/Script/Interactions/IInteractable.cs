@@ -2,12 +2,12 @@ using UnityEngine;
 
 public interface IInteractable
 {
-    // gọi khi camera đang nhìn trúng object (để bật highlight)
-    void OnFocus();
+    // tên hiển thị trên UI, ví dụ "Bật đèn", "Mở cửa"
+    string Prompt { get; }
 
-    // gọi khi camera rời khỏi object (tắt highlight)
-    void OnUnfocus();
+    // có cho tương tác không (tuỳ điều kiện quest, khoá cửa...)
+    bool CanInteract(GameObject interactor);
 
-    // gọi khi nhấn E
-    void Interact(Interactor interactor);
+    // thực hiện hành động
+    void Interact(GameObject interactor);
 }
