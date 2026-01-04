@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using System.Reflection;
 
 public class Interactor : MonoBehaviour
 {
@@ -21,21 +20,23 @@ public class Interactor : MonoBehaviour
 
     private IInteractable current;
     private GameObject currentGO;
+
+    // Nếu bạn muốn highlight bằng OutlineHighlighter từ Interactor
     private OutlineHighlighter currentOutline;
 
-    void Awake()
+    private void Awake()
     {
         if (!cam) cam = GetComponentInChildren<Camera>();
         if (!cam) cam = Camera.main;
         SetUI(false, "");
     }
 
-    void Update()
+    private void Update()
     {
         FindTarget();
     }
 
-    void FindTarget()
+    private void FindTarget()
     {
         if (!cam) return;
 
@@ -51,23 +52,14 @@ public class Interactor : MonoBehaviour
             if (logHitEveryFrame)
                 Debug.Log($"HIT: {hit.collider.name} (layer={LayerMask.LayerToName(hitGO.layer)}) root={hit.collider.transform.root.name}");
 
-            // ✅ Lấy IInteractable chắc chắn (duyệt MonoBehaviour rồi cast interface)
-            IInteractable interactable = null;
-            var behaviours = hit.collider.GetComponentsInParent<MonoBehaviour>(true);
-            foreach (var b in behaviours)
-            {
-                if (b is IInteractable ii)
-                {
-                    interactable = ii;
-                    break;
-                }
-            }
+            // Lấy IInteractable chắc chắn (duyệt MonoBehaviour rồi cast interface)
+            IInteractable interactable = FindInteractableInParents(hit.collider);
 
             if (interactable != null)
             {
-                // ✅ Hint text: nếu script có GetHintText() thì lấy, không thì fallback
-                string hint = GetHintTextSafe(interactable);
+                string hint = BuildHint(interactable);
 
+                // đổi target (khác collider/root trước đó)
                 if (hitGO != currentGO)
                 {
                     ClearFocusInternal();
@@ -75,7 +67,7 @@ public class Interactor : MonoBehaviour
                     current = interactable;
                     currentGO = hitGO;
 
-                    // Nếu bạn bỏ outline hoàn toàn thì có thể xoá block này
+                    // highlight (tuỳ chọn)
                     currentOutline = hit.collider.GetComponentInParent<OutlineHighlighter>(true);
                     if (currentOutline) currentOutline.SetHighlighted(true);
 
@@ -87,7 +79,7 @@ public class Interactor : MonoBehaviour
                 }
                 else
                 {
-                    // đang focus cùng object, vẫn update hint theo state (mở/đóng)
+                    // vẫn đang focus cùng object -> update hint theo state (mở/đóng/khóa)
                     SetUI(true, hint);
                 }
 
@@ -102,33 +94,44 @@ public class Interactor : MonoBehaviour
         SetUI(false, "");
     }
 
-    // ✅ Tự động lấy hint nếu script có hàm:
-    // public string GetHintText()
-    string GetHintTextSafe(IInteractable interactable)
+    private IInteractable FindInteractableInParents(Collider col)
+    {
+        if (!col) return null;
+
+        var behaviours = col.GetComponentsInParent<MonoBehaviour>(true);
+        foreach (var b in behaviours)
+        {
+            if (b is IInteractable ii) return ii;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Tạo hint text:
+    /// - Dòng 1: GetHintText() (E)
+    /// - Dòng 2 (nếu có): GetAltHintText() (F) và CanAltInteract() == true
+    /// </summary>
+    private string BuildHint(IInteractable interactable)
     {
         if (interactable == null) return "";
 
-        // mặc định
-        string fallback = "Ấn E để tương tác";
+        string hint = interactable.GetHintText();
 
-        // tìm method GetHintText() trên chính class (không cần interface)
-        var type = interactable.GetType();
-        MethodInfo mi = type.GetMethod("GetHintText", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
-        if (mi != null && mi.ReturnType == typeof(string) && mi.GetParameters().Length == 0)
+        // Append hint cho phím F nếu object có hỗ trợ alt
+        if (interactable is IAltInteractable alt && alt.CanAltInteract(this))
         {
-            try
-            {
-                var result = mi.Invoke(interactable, null) as string;
-                if (!string.IsNullOrEmpty(result)) return result;
-            }
-            catch { /* ignore */ }
+            string altHint = alt.GetAltHintText();
+            if (!string.IsNullOrEmpty(altHint))
+                hint = string.IsNullOrEmpty(hint) ? altHint : $"{hint}\n{altHint}";
         }
 
-        return fallback;
+        if (string.IsNullOrEmpty(hint))
+            hint = "Ấn [E] để tương tác";
+
+        return hint;
     }
 
-    void SetUI(bool canInteract, string hintText)
+    private void SetUI(bool canInteract, string hintText)
     {
         if (crosshair) crosshair.SetInteractable(canInteract);
 
@@ -139,7 +142,7 @@ public class Interactor : MonoBehaviour
         }
     }
 
-    void ClearFocusInternal()
+    private void ClearFocusInternal()
     {
         if (current != null) current.OnUnfocus();
         if (currentOutline) currentOutline.SetHighlighted(false);
@@ -149,23 +152,37 @@ public class Interactor : MonoBehaviour
         currentOutline = null;
     }
 
+    // ===== INPUT =====
+    // E
     public void OnInteract(InputValue value)
     {
         if (!value.isPressed) return;
         if (current == null) return;
 
         current.Interact(this);
+        // Sau khi interact có thể đổi state (mở cửa, nhặt key...) -> update hint ngay
+        SetUI(true, BuildHint(current));
+    }
+
+    // F
+    public void OnAltInteract(InputValue value)
+    {
+        if (!value.isPressed) return;
+        if (current == null) return;
+
+        if (current is IAltInteractable alt && alt.CanAltInteract(this))
+        {
+            alt.AltInteract(this);
+            // update hint ngay sau khi khóa/mở khóa
+            SetUI(true, BuildHint(current));
+        }
     }
 	
-	public void OnAltInteract(InputValue value)
-{
-    if (!value.isPressed) return;
-    if (current == null) return;
+	public InventoryBarUI inventoryUI;
 
-    // Chỉ Door mới xử lý AltInteract (F)
-    if (current is IAltInteractable alt)
-    {
-        alt.AltInteract(this);
-    }
-}
+	public void OnInventory(UnityEngine.InputSystem.InputValue value)
+	{
+		if (!value.isPressed) return;
+		if (inventoryUI) inventoryUI.Toggle();
+	}
 }

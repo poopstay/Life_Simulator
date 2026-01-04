@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class LightSwitchInteractable : MonoBehaviour, IInteractable
+public class LightSwitchInteractable_A : MonoBehaviour, IInteractable
 {
     public Light[] lights;
 

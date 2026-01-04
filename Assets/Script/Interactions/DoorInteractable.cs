@@ -3,20 +3,26 @@ using UnityEngine;
 public class DoorInteractable : MonoBehaviour, IInteractable
 {
     [Header("Door")]
-    [Tooltip("Transform cánh cửa cần quay (thường là object Door).")]
+    [Tooltip("Transform cánh cửa (PHẢI là object pivot ở bản lề).")]
     public Transform door;
 
-    [Tooltip("Góc mở (Y) so với góc đóng. Ví dụ 90 độ.")]
-    public float openAngle = 80f;
+    [Tooltip("Nếu cửa xoay theo trục Z (thường cửa toilet), bật cái này.")]
+    public bool rotateZ = false;
+
+    [Tooltip("Góc mở. Ví dụ 90.")]
+    public float openAngle = 90f;
 
     [Tooltip("Thời gian mở/đóng.")]
     public float duration = 0.5f;
 
-    [Tooltip("Mở theo chiều nào. 1 hoặc -1 để đổi hướng.")]
+    [Tooltip("Hướng mở: 1 hoặc -1.")]
     public float openDirection = 1f;
 
     [Header("Start State")]
     public bool startOpen = false;
+
+    [Header("Optional Highlight")]
+    private OutlineHighlighter outline;
 
     [Header("Optional Sound")]
     public AudioSource audioSource;
@@ -24,28 +30,45 @@ public class DoorInteractable : MonoBehaviour, IInteractable
     public AudioClip closeClip;
 
     private bool isOpen;
-    private float closedY;
+    private float closedAngle;     // angle khi đóng (Y hoặc Z)
     private Coroutine anim;
 
     private void Awake()
     {
-        if (!door) door = transform.root; // fallback (tốt nhất vẫn kéo tay)
-        closedY = door.localEulerAngles.y;
-        isOpen = startOpen;
+        if (!door) door = transform;
 
-        // set trạng thái ban đầu
-        SetDoorImmediate(isOpen);
+        outline = GetComponentInChildren<OutlineHighlighter>(true);
+        if (!outline) outline = GetComponentInParent<OutlineHighlighter>(true);
+
+        // Lưu góc đóng
+        closedAngle = rotateZ ? door.localEulerAngles.z : door.localEulerAngles.y;
+
+        isOpen = startOpen;
+        SetAngleImmediate(isOpen ? closedAngle + openAngle * openDirection : closedAngle);
     }
 
-    public void OnFocus() { }
-    public void OnUnfocus() { }
+    // ===== IInteractable (Interactor-system) =====
+    public void OnFocus()
+    {
+        if (outline) outline.SetHighlighted(true);
+    }
+
+    public void OnUnfocus()
+    {
+        if (outline) outline.SetHighlighted(false);
+    }
 
     public void Interact(Interactor interactor)
     {
         isOpen = !isOpen;
 
         if (anim != null) StopCoroutine(anim);
-        anim = StartCoroutine(AnimateDoor(isOpen));
+
+        float target = isOpen
+            ? closedAngle + openAngle * openDirection
+            : closedAngle;
+
+        anim = StartCoroutine(AnimateTo(target));
 
         if (audioSource)
         {
@@ -59,46 +82,33 @@ public class DoorInteractable : MonoBehaviour, IInteractable
         return isOpen ? "Ấn [E] để đóng cửa" : "Ấn [E] để mở cửa";
     }
 
-    private void SetDoorImmediate(bool open)
+    // ===== Helpers =====
+    private System.Collections.IEnumerator AnimateTo(float targetAngle)
     {
-        float targetY = open ? closedY + openAngle * openDirection : closedY;
-        var e = door.localEulerAngles;
-        e.y = targetY;
-        door.localEulerAngles = e;
-    }
-
-    private System.Collections.IEnumerator AnimateDoor(bool open)
-    {
-        float startY = door.localEulerAngles.y;
-        float endY = open ? closedY + openAngle * openDirection : closedY;
-
-        // xử lý wrap 0..360 cho mượt
-        startY = NormalizeAngle(startY);
-        endY = NormalizeAngle(endY);
-
+        float start = GetAngle();
         float t = 0f;
+
         while (t < duration)
         {
             t += Time.deltaTime;
-            float k = Mathf.Clamp01(t / duration);
-            float y = Mathf.LerpAngle(startY, endY, k);
-
-            var e = door.localEulerAngles;
-            e.y = y;
-            door.localEulerAngles = e;
-
+            float k = Mathf.Clamp01(t / Mathf.Max(0.0001f, duration));
+            float a = Mathf.LerpAngle(start, targetAngle, k);
+            SetAngleImmediate(a);
             yield return null;
         }
 
-        var ee = door.localEulerAngles;
-        ee.y = endY;
-        door.localEulerAngles = ee;
+        SetAngleImmediate(targetAngle);
+        anim = null;
     }
 
-    private float NormalizeAngle(float a)
+    private float GetAngle()
+        => rotateZ ? door.localEulerAngles.z : door.localEulerAngles.y;
+
+    private void SetAngleImmediate(float angle)
     {
-        a %= 360f;
-        if (a < 0) a += 360f;
-        return a;
+        Vector3 e = door.localEulerAngles;
+        if (rotateZ) e.z = angle;
+        else e.y = angle;
+        door.localEulerAngles = e;
     }
 }

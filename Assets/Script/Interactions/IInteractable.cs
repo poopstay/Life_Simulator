@@ -2,12 +2,23 @@ using UnityEngine;
 
 public interface IInteractable
 {
-    // tên hiển thị trên UI, ví dụ "Bật đèn", "Mở cửa"
-    string Prompt { get; }
+    /// <summary>
+    /// Text hiển thị khi nhìn vào object
+    /// </summary>
+    string GetHintText();
 
-    // có cho tương tác không (tuỳ điều kiện quest, khoá cửa...)
-    bool CanInteract(GameObject interactor);
+    /// <summary>
+    /// Gọi khi nhấn phím tương tác (E)
+    /// </summary>
+    void Interact(Interactor interactor);
 
-    // thực hiện hành động
-    void Interact(GameObject interactor);
+    /// <summary>
+    /// Gọi khi player nhìn vào object
+    /// </summary>
+    void OnFocus();
+
+    /// <summary>
+    /// Gọi khi player rời mắt khỏi object
+    /// </summary>
+    void OnUnfocus();
 }
