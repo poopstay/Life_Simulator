@@ -15,7 +15,7 @@ public class InventoryBarUI : MonoBehaviour
     public RectTransform rowRoot;
 
     [Header("Item Icon Settings")]
-    public float iconSize = 44f;
+    public float iconSize = 100f;
     public float iconPadding = 6f;
 
     private RectTransform panel;

@@ -36,63 +36,63 @@ public class Interactor : MonoBehaviour
         FindTarget();
     }
 
-    private void FindTarget()
-    {
-        if (!cam) return;
+	private void FindTarget()
+	{
+		if (!cam) return;
 
-        Ray ray = new Ray(cam.transform.position, cam.transform.forward);
+		Ray ray = new Ray(cam.transform.position, cam.transform.forward);
+		if (debugDraw)
+			Debug.DrawRay(ray.origin, ray.direction * distance, Color.yellow);
 
-        if (debugDraw)
-            Debug.DrawRay(ray.origin, ray.direction * distance, Color.yellow);
+		var hits = Physics.RaycastAll(
+			ray,
+			distance,
+			interactMask,
+			QueryTriggerInteraction.Ignore
+		);
 
-        if (Physics.SphereCast(ray, sphereRadius, out RaycastHit hit, distance, interactMask, QueryTriggerInteraction.Ignore))
-        {
-            var hitGO = hit.collider.gameObject;
 
-            if (logHitEveryFrame)
-                Debug.Log($"HIT: {hit.collider.name} (layer={LayerMask.LayerToName(hitGO.layer)}) root={hit.collider.transform.root.name}");
+		if (hits.Length == 0)
+		{
+			ClearFocusInternal();
+			SetUI(false, "");
+			return;
+		}
 
-            // Lấy IInteractable chắc chắn (duyệt MonoBehaviour rồi cast interface)
-            IInteractable interactable = FindInteractableInParents(hit.collider);
+		System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
-            if (interactable != null)
-            {
-                string hint = BuildHint(interactable);
+		foreach (var hit in hits)
+		{
+			var interactable = FindInteractableInParents(hit.collider);
+			if (interactable == null) continue;
 
-                // đổi target (khác collider/root trước đó)
-                if (hitGO != currentGO)
-                {
-                    ClearFocusInternal();
+			string hint = BuildHint(interactable);
 
-                    current = interactable;
-                    currentGO = hitGO;
+			if (current != interactable)
+			{
+				ClearFocusInternal();
 
-                    // highlight (tuỳ chọn)
-                    currentOutline = hit.collider.GetComponentInParent<OutlineHighlighter>(true);
-                    if (currentOutline) currentOutline.SetHighlighted(true);
+				current = interactable;
+				currentGO = hit.collider.gameObject;
 
-                    current.OnFocus();
-                    SetUI(true, hint);
+				currentOutline = hit.collider.GetComponentInParent<OutlineHighlighter>(true);
+				if (currentOutline) currentOutline.SetHighlighted(true);
 
-                    if (logStateChanges)
-                        Debug.Log($"FOCUS -> {hit.collider.name} | interactable={current.GetType().Name}");
-                }
-                else
-                {
-                    // vẫn đang focus cùng object -> update hint theo state (mở/đóng/khóa)
-                    SetUI(true, hint);
-                }
+				current.OnFocus();
+				SetUI(true, hint);
+			}
+			else
+			{
+				SetUI(true, hint);
+			}
 
-                return;
-            }
-        }
+			return;
+		}
 
-        if (current != null && logStateChanges)
-            Debug.Log("UNFOCUS");
+		ClearFocusInternal();
+		SetUI(false, "");
+	}
 
-        ClearFocusInternal();
-        SetUI(false, "");
-    }
 
     private IInteractable FindInteractableInParents(Collider col)
     {
