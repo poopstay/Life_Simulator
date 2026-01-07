@@ -51,7 +51,6 @@ public class Interactor : MonoBehaviour
 			QueryTriggerInteraction.Ignore
 		);
 
-
 		if (hits.Length == 0)
 		{
 			ClearFocusInternal();
