@@ -6,10 +6,11 @@ public class VehicleInteractable : MonoBehaviour, IInteractable
     [Header("Hint Text")]
     public string mountHint = "Ấn [E] để lên xe";
     public string dismountHint = "Ấn [E] để xuống xe";
-    public string brakeHint = "Ấn [Space] để phanh";
+    public string brakeHint = "Giữ [Space] để phanh";
     public string boostHint = "Giữ [Shift] để tăng tốc";
+    public string lightHint = "Ấn [F] để tắt/mở đèn";	
     public string mustStopHint = "Xe phải dừng hẳn mới xuống được";
-
+	public VehicleHeadlightController headlight;
     [Header("Seat / Mount point")]
     public Transform seatPoint;
 
@@ -101,7 +102,7 @@ public class VehicleInteractable : MonoBehaviour, IInteractable
         if (!isMounted) return mountHint;
 
         // nếu vẫn raycast trúng (không quan trọng)
-        if (motor != null && !motor.IsStopped) return $"{brakeHint}/{boostHint}";
+        if (motor != null && !motor.IsStopped) return $"{brakeHint} - {boostHint} - {lightHint}";
         return dismountHint;
     }
 
@@ -121,6 +122,8 @@ public class VehicleInteractable : MonoBehaviour, IInteractable
     // =========================
     private void Mount(Interactor interactor)
     {
+		if (headlight) headlight.OnMounted();
+		
         if (debugLogs) Debug.Log("[VehicleInteractable] Mount() begin");
 
         if (isMounted)
@@ -201,6 +204,8 @@ public class VehicleInteractable : MonoBehaviour, IInteractable
 
     private void TryDismount()
     {
+		if (headlight) headlight.OnDismounted();
+		
         if (debugLogs) Debug.Log("[VehicleInteractable] TryDismount()");
 
         if (!isMounted)
@@ -280,7 +285,7 @@ public class VehicleInteractable : MonoBehaviour, IInteractable
         }
 
         string msg = (!motor.IsStopped)
-            ? $"{brakeHint}/{boostHint}"
+            ? $"{brakeHint} - {boostHint} - {lightHint}"
             : dismountHint;
 
         mountedInteractor.hintUI.Show(msg);
